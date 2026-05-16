@@ -1,34 +1,29 @@
 import React, { useEffect } from 'react';
 import useGameStore from './store/useGameStore';
-import { Sun, Moon, Zap, Leaf, Users, Brain, ShieldAlert, Heart } from 'lucide-react';
+import { Sun, Moon, Zap, Leaf, Users, Brain, ShieldAlert, Heart, Lock, Unlock, Crosshair } from 'lucide-react';
 
 function App() {
   const systemState = useGameStore((state) => state.system_state);
   const resources = useGameStore((state) => state.resources);
   const humanMetrics = useGameStore((state) => state.human_metrics);
+  const unlockedFeatures = useGameStore((state) => state.unlocked_features);
+  const simulationModules = useGameStore((state) => state.simulation_modules);
+  
   const toggleDayNight = useGameStore((state) => state.toggleDayNight);
+  const unlockFeature = useGameStore((state) => state.unlockFeature);
+  const deployPredator = useGameStore((state) => state.deployPredator);
   const tick = useGameStore((state) => state.tick);
 
-  // Core background loop execution
   useEffect(() => {
-    const gameLoop = setInterval(() => {
-      tick();
-    }, 1000);
+    const gameLoop = setInterval(() => { tick(); }, 1000);
     return () => clearInterval(gameLoop);
   }, [tick]);
-
-  // Utility function to color-code metric status bars
-  const getBarColor = (val) => {
-    if (val < 0.3) return 'bg-red-500';
-    if (val < 0.6) return 'bg-amber-500';
-    return 'bg-emerald-500';
-  };
 
   return (
     <div className={`min-h-screen p-8 transition-colors duration-1000 ${systemState.is_night ? 'bg-slate-950 text-slate-300' : 'bg-slate-50 text-slate-800'}`}>
       <div className="max-w-3xl mx-auto space-y-6">
         
-        {/* Top Operational Telemetry */}
+        {/* Header (Same as before) */}
         <header className="flex justify-between items-center pb-4 border-b border-current/20">
           <div>
             <h1 className="text-3xl font-black tracking-wider text-indigo-600 dark:text-indigo-400">PROJECT: REFILDING</h1>
@@ -42,7 +37,7 @@ function App() {
           </div>
         </header>
 
-        {/* SECTION 1: SYSTEM RESOURCES */}
+        {/* Resources (Same as before) */}
         <section className="grid grid-cols-2 gap-4">
           <div className="p-4 rounded-lg border border-current/10 bg-current/5 flex items-center space-x-4">
             <Zap className={`w-6 h-6 ${systemState.is_night ? 'text-blue-400' : 'text-yellow-500'}`} />
@@ -60,7 +55,7 @@ function App() {
           </div>
         </section>
 
-        {/* SECTION 2: HUMAN BIOLOGICAL TELEMETRY */}
+        {/* Biological Telemetry (Same as before) */}
         <section className="p-6 rounded-xl border border-current/20 bg-current/[0.02] space-y-4">
           <div className="flex justify-between items-center border-b border-current/10 pb-2">
             <h2 className="font-mono text-sm font-bold flex items-center">
@@ -68,60 +63,92 @@ function App() {
             </h2>
             <p className="font-mono text-sm">Subject Pop: <span className="font-bold text-indigo-500">{humanMetrics.population}</span></p>
           </div>
-
-          {/* Core Wellness Metric */}
           <div className="bg-current/5 p-4 rounded-lg flex justify-between items-center">
             <span className="font-bold tracking-wide">Aggregate Vitality Index</span>
             <span className="text-2xl font-black font-mono text-indigo-500">{(humanMetrics.vitality_index * 100).toFixed(0)}%</span>
           </div>
-
-          {/* Neurochemical Balance Trackers */}
           <div className="space-y-3 pt-2">
-            {/* Dopamine */}
             <div>
               <div className="flex justify-between text-xs font-mono mb-1">
-                <span className="flex items-center"><Brain className="w-3 h-3 mr-1 text-pink-400" /> Dopamine (Motivation)</span>
+                <span className="flex items-center"><Brain className="w-3 h-3 mr-1 text-pink-400" /> Dopamine</span>
                 <span>{humanMetrics.dopamine}</span>
               </div>
               <div className="w-full bg-current/10 h-2 rounded-full overflow-hidden">
-                <div className="h-full bg-pink-500 transition-all duration-500" style={{ width: `${humanMetrics.dopamine * 100}%` }}></div>
+                <div className="h-full bg-pink-500 transition-all" style={{ width: `${humanMetrics.dopamine * 100}%` }}></div>
               </div>
             </div>
-
-            {/* Cortisol */}
             <div>
               <div className="flex justify-between text-xs font-mono mb-1">
-                <span className="flex items-center"><ShieldAlert className="w-3 h-3 mr-1 text-amber-400" /> Cortisol (Stress/Alertness)</span>
+                <span className="flex items-center"><ShieldAlert className="w-3 h-3 mr-1 text-amber-400" /> Cortisol</span>
                 <span>{humanMetrics.cortisol}</span>
               </div>
               <div className="w-full bg-current/10 h-2 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-500 transition-all duration-500" style={{ width: `${humanMetrics.cortisol * 100}%` }}></div>
+                <div className="h-full bg-amber-500 transition-all" style={{ width: `${humanMetrics.cortisol * 100}%` }}></div>
               </div>
             </div>
-
-            {/* Oxytocin */}
             <div>
               <div className="flex justify-between text-xs font-mono mb-1">
-                <span className="flex items-center"><Heart className="w-3 h-3 mr-1 text-red-400" /> Oxytocin (Tribal Connection)</span>
+                <span className="flex items-center"><Heart className="w-3 h-3 mr-1 text-red-400" /> Oxytocin</span>
                 <span>{humanMetrics.oxytocin}</span>
               </div>
               <div className="w-full bg-current/10 h-2 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500 transition-all duration-500" style={{ width: `${humanMetrics.oxytocin * 100}%` }}></div>
+                <div className="h-full bg-red-500 transition-all" style={{ width: `${humanMetrics.oxytocin * 100}%` }}></div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* INTERVENTION MATRIX CONTROLS */}
-        <div className="flex space-x-4 pt-4">
-          <button 
-            onClick={toggleDayNight}
-            className="flex items-center justify-center font-mono text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-lg border border-indigo-500 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all duration-300"
-          >
-            {systemState.is_night ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-            Invert Planetary Cycle
-          </button>
-        </div>
+        {/* SECTION 3: SYSTEM UPGRADES & INTERVENTIONS */}
+        <section className="space-y-4 pt-4 border-t border-current/20">
+          <h3 className="font-mono text-sm font-bold opacity-70">ENVIRONMENTAL INTERVENTIONS</h3>
+          
+          <div className="grid grid-cols-2 gap-4">
+            {/* Base Ability: Cycle Change */}
+            <button 
+              onClick={toggleDayNight}
+              className="flex flex-col items-center justify-center p-4 rounded-lg border border-indigo-500/50 hover:bg-indigo-500/10 transition-all"
+            >
+              {systemState.is_night ? <Sun className="w-6 h-6 mb-2 text-indigo-500" /> : <Moon className="w-6 h-6 mb-2 text-indigo-500" />}
+              <span className="font-mono text-xs font-bold uppercase tracking-wider text-indigo-500">Invert Cycle</span>
+            </button>
+
+            {/* Feature Flag Conditional Rendering: Predator Lab */}
+            {!unlockedFeatures.predator_lab ? (
+              // If Locked: Show Purchase Button
+              <button 
+                onClick={() => unlockFeature('predator_lab', 100)}
+                disabled={resources.solar_energy < 100}
+                className="flex flex-col items-center justify-center p-4 rounded-lg border border-rose-500/30 hover:border-rose-500/80 hover:bg-rose-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                <Lock className="w-6 h-6 mb-2 text-rose-500 group-hover:hidden" />
+                <Unlock className="w-6 h-6 mb-2 text-rose-500 hidden group-hover:block" />
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-rose-500">Unlock Predator Lab</span>
+                <span className="font-mono text-[10px] opacity-70 mt-1">Cost: 100 Solar</span>
+              </button>
+            ) : (
+              // If Unlocked: Show the Lab Controls
+              <div className="p-4 rounded-lg border border-rose-500 bg-rose-500/5 flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center text-rose-500">
+                    <Crosshair className="w-5 h-5 mr-2" />
+                    <span className="font-mono text-xs font-bold uppercase">Predator Lab</span>
+                  </div>
+                  <span className="font-mono text-xs bg-rose-500 text-white px-2 py-0.5 rounded-full">
+                    Active: {simulationModules.robotic_predators_active}
+                  </span>
+                </div>
+                
+                <button 
+                  onClick={deployPredator}
+                  disabled={resources.biomass < 10}
+                  className="w-full mt-2 py-2 bg-rose-500 text-white text-xs font-bold uppercase rounded hover:bg-rose-600 disabled:opacity-50 transition-colors"
+                >
+                  Deploy Artificial Threat (-10 Biomass)
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
 
       </div>
     </div>
