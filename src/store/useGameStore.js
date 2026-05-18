@@ -1,117 +1,139 @@
 import { create } from 'zustand';
 
 const useGameStore = create((set) => ({
-  // 1. Core State
-  system_state: { is_night: false, day_count: 1 },
-  resources: { solar_energy: 150, biomass: 50 }, // Starting with enough energy to buy the lab
-  
-  // 2. Biological Metrics
-  human_metrics: {
-    population: 150,
-    dopamine: 0.50,
-    cortisol: 0.35,
-    oxytocin: 0.60,
-    vitality_index: 0.75
+  // 1. THE DATA SCHEMA
+  player_progression: {
+    current_epoch: 1, 
+    world_corruption_discovered: 0.0, // 0.0 to 1.0
   },
 
-  // 3. NEW: Modules and Feature Flags
-  unlocked_features: {
-    predator_lab: false, // Hidden by default
-  },
-  simulation_modules: {
-    robotic_predators_active: 0,
+  primitive_resources: {
+    food: 20,
+    firewood: 5,
+    flint: 0,
   },
 
-  // Actions
-  toggleDayNight: () => set((state) => ({
-    system_state: {
-      ...state.system_state,
-      is_night: !state.system_state.is_night,
-      day_count: state.system_state.is_night ? state.system_state.day_count + 1 : state.system_state.day_count
-    }
-  })),
+  tribe_metrics: {
+    population: 5,
+    campfire_heat: 1.0, 
+    fear_level: 0.20,   
+    superstition_level: 1.0, 
+  },
 
-  // NEW: System architecture for unlocking features
-  unlockFeature: (featureName, cost) => set((state) => {
-    if (state.resources.solar_energy >= cost && !state.unlocked_features[featureName]) {
-      return {
-        resources: { ...state.resources, solar_energy: state.resources.solar_energy - cost },
-        unlocked_features: { ...state.unlocked_features, [featureName]: true }
-      };
-    }
-    return state; // Do nothing if they can't afford it
+  unlocked_knowledge: {
+    sharpened_sticks: false,
+    metallic_roots_found: false,
+  },
+
+  // 2. PLAYER ACTIONS
+  forage: () => set((state) => {
+    // If they have sharpened sticks, they get double food
+    const multiplier = state.unlocked_knowledge.sharpened_sticks ? 2 : 1;
+    const foundWood = Math.random() > 0.7;
+    
+    return {
+      primitive_resources: {
+        ...state.primitive_resources,
+        food: state.primitive_resources.food + (2 * multiplier),
+        firewood: state.primitive_resources.firewood + (foundWood ? 1 : 0)
+      }
+    };
   }),
 
-  // NEW: Deploying a predator uses 10 Biomass
-  deployPredator: () => set((state) => {
-    if (state.resources.biomass >= 10) {
+  stokeFire: () => set((state) => {
+    if (state.primitive_resources.firewood >= 1) {
       return {
-        resources: { ...state.resources, biomass: state.resources.biomass - 10 },
-        simulation_modules: { 
-          ...state.simulation_modules, 
-          robotic_predators_active: state.simulation_modules.robotic_predators_active + 1 
+        primitive_resources: {
+          ...state.primitive_resources,
+          firewood: state.primitive_resources.firewood - 1
+        },
+        tribe_metrics: {
+          ...state.tribe_metrics,
+          campfire_heat: Math.min(1.0, state.tribe_metrics.campfire_heat + 0.4),
+          fear_level: Math.max(0, state.tribe_metrics.fear_level - 0.15) 
         }
       };
     }
     return state;
   }),
 
-  // Updated Tick: Now factors in Predators
-  tick: () => set((state) => {
-    const isNight = state.system_state.is_night;
-    const predators = state.simulation_modules.robotic_predators_active;
-    
-    // Resource Math
-    const energyChange = isNight ? -5 : 10;
-    // Biomass slowly grows over time
-    const biomassChange = isNight ? 1 : 2; 
+  // NEW ACTION: High Risk, High Reward
+  searchTheDark: () => set((state) => {
+    // Venturing away from the fire causes massive fear and lowers heat, but yields Flint
+    return {
+      primitive_resources: {
+        ...state.primitive_resources,
+        flint: state.primitive_resources.flint + 1
+      },
+      tribe_metrics: {
+        ...state.tribe_metrics,
+        fear_level: Math.min(1.0, state.tribe_metrics.fear_level + 0.3),
+        campfire_heat: Math.max(0, state.tribe_metrics.campfire_heat - 0.2)
+      }
+    };
+  }),
 
-    // Biology Math
-    let newDopamine = state.human_metrics.dopamine;
-    let newCortisol = state.human_metrics.cortisol;
-    let newOxytocin = state.human_metrics.oxytocin;
-    let popChange = 0;
-
-    if (isNight) {
-      newCortisol = Math.max(0.10, newCortisol - 0.02);
-      newOxytocin = Math.min(1.00, newOxytocin + 0.01);
-      newDopamine = Math.max(0.20, newDopamine - 0.01);
-    } else {
-      newCortisol = Math.min(0.80, newCortisol + 0.03);
-      if (newDopamine > 0.60) newOxytocin = Math.max(0.10, newOxytocin - 0.02);
+  // NEW ACTION: Crafting the first tool
+  craftSpears: () => set((state) => {
+    if (state.primitive_resources.flint >= 3 && state.primitive_resources.firewood >= 2) {
+      return {
+        primitive_resources: {
+          ...state.primitive_resources,
+          flint: state.primitive_resources.flint - 3,
+          firewood: state.primitive_resources.firewood - 2
+        },
+        unlocked_knowledge: {
+          ...state.unlocked_knowledge,
+          sharpened_sticks: true,
+          metallic_roots_found: true // Crafting digs too deep and exposes a wire
+        },
+        // The Glitch Begins
+        player_progression: {
+          ...state.player_progression,
+          current_epoch: 2, 
+          world_corruption_discovered: 0.10
+        }
+      };
     }
+    return state;
+  }),
 
-    // PREDATOR INTERVENTION MODIFIERS
-    if (predators > 0) {
-      // Predators spike cortisol drastically (Eustress)
-      newCortisol = Math.min(1.00, newCortisol + (0.05 * predators));
-      // Threat forces the tribe together (High Oxytocin)
-      newOxytocin = Math.min(1.00, newOxytocin + (0.03 * predators));
-      // The thrill of survival boosts dopamine
-      newDopamine = Math.min(1.00, newDopamine + (0.02 * predators));
-
-      // Negative feedback loop: Too many predators reduce population slightly
-      if (Math.random() < (0.1 * predators)) {
-        popChange = -1;
+  // NEW ACTION: Investigating the Anomaly
+  examineRoot: () => set((state) => {
+    return {
+      player_progression: {
+        ...state.player_progression,
+        world_corruption_discovered: Math.min(1.0, state.player_progression.world_corruption_discovered + 0.15)
+      },
+      tribe_metrics: {
+        ...state.tribe_metrics,
+        superstition_level: Math.max(0, state.tribe_metrics.superstition_level - 0.2) // Truth replaces superstition
       }
     }
+  }),
 
-    const newVitality = (newDopamine + (1 - newCortisol) + newOxytocin) / 3;
+  // 3. THE ENGINE
+  tick: () => set((state) => {
+    let { campfire_heat, fear_level, population } = state.tribe_metrics;
+    let { food } = state.primitive_resources;
+
+    campfire_heat = Math.max(0, campfire_heat - 0.03);
+
+    if (campfire_heat < 0.3) {
+      fear_level = Math.min(1.0, fear_level + 0.04); 
+    } else {
+      fear_level = Math.max(0.0, fear_level - 0.02); 
+    }
+
+    food = Math.max(0, food - (population * 0.05));
+
+    if (campfire_heat === 0 && fear_level >= 0.9 && population > 0) {
+      if (Math.random() > 0.9) population -= 1;
+    }
 
     return {
-      resources: {
-        ...state.resources,
-        solar_energy: Math.max(0, state.resources.solar_energy + energyChange),
-        biomass: state.resources.biomass + biomassChange
-      },
-      human_metrics: {
-        ...state.human_metrics,
-        population: Math.max(0, state.human_metrics.population + popChange),
-        dopamine: Number(newDopamine.toFixed(2)),
-        cortisol: Number(newCortisol.toFixed(2)),
-        oxytocin: Number(newOxytocin.toFixed(2)),
-        vitality_index: Number(newVitality.toFixed(2))
-      }
+      primitive_resources: { ...state.primitive_resources, food: Number(food.toFixed(1)) },
+      tribe_metrics: { ...state.tribe_metrics, campfire_heat: Number(campfire_heat.toFixed(2)), fear_level: Number(fear_level.toFixed(2)), population }
     };
   })
 }));
