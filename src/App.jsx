@@ -1,18 +1,19 @@
 import React, { useEffect } from 'react';
 import useGameStore from './store/useGameStore';
-import { Flame, Trees, Skull, MessageCircle, Wheat, Bone, Activity } from 'lucide-react'; 
+import { Flame, Skull, MessageCircle, Wheat, RefreshCw, Cpu } from 'lucide-react'; 
 
 function App() {
   const progression = useGameStore((state) => state.player_progression);
   const resources = useGameStore((state) => state.primitive_resources);
   const tribe = useGameStore((state) => state.tribe_metrics);
   const knowledge = useGameStore((state) => state.unlocked_knowledge);
+  const mapEntities = useGameStore((state) => state.map_entities);
   
-  const theGreatHunt = useGameStore((state) => state.theGreatHunt);
-  const gatherWood = useGameStore((state) => state.gatherWood);
+  const forage = useGameStore((state) => state.forage);
   const shareStories = useGameStore((state) => state.shareStories);
   const stokeFire = useGameStore((state) => state.stokeFire);
   const discoverAgriculture = useGameStore((state) => state.discoverAgriculture);
+  const executeCycleReset = useGameStore((state) => state.executeCycleReset);
   const tick = useGameStore((state) => state.tick);
 
   useEffect(() => {
@@ -20,142 +21,121 @@ function App() {
     return () => clearInterval(gameLoop);
   }, [tick]);
 
-  if (tribe.population <= 0) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-red-900 font-serif">
-        <div className="text-center">
-          <Skull className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <h1 className="text-4xl tracking-widest uppercase">The Lineage Ends</h1>
-        </div>
-      </div>
-    );
-  }
-
   const isGlitching = progression.world_corruption_discovered > 0;
-  const glitchTextClass = isGlitching ? "font-mono text-emerald-500 animate-pulse" : "";
+
+  // Render a 6x6 Matrix Map Area programmatically
+  const renderMap = () => {
+    let grid = [];
+    for (let r = 0; r < 6; r++) {
+      for (let c = 0; c < 6; c++) {
+        // Identify if any entity occupies this coordinate slice
+        const hasHuman = mapEntities.tribe_positions.some(([hr, hc]) => hr === r && hc === c);
+        const hasPredator = mapEntities.predator_position && mapEntities.predator_position[0] === r && mapEntities.predator_position[1] === c;
+
+        grid.push(
+          <div 
+            key={`${r}-${c}`} 
+            className={`aspect-square border border-stone-900/40 flex items-center justify-center text-sm transition-all duration-300 relative
+              ${knowledge.agriculture_active ? 'bg-amber-950/10' : 'bg-emerald-950/10'} 
+              ${r === 3 && c === 3 ? 'bg-orange-950/30 border border-orange-900/40' : ''}`} // Central Fire tile
+          >
+            {/* Center fire icon */}
+            {r === 3 && c === 3 && tribe.campfire_heat > 0.1 && (
+              <Flame className="w-3 h-3 text-orange-700 animate-pulse absolute" />
+            )}
+            
+            {/* Render Entities inside DOM elements */}
+            {hasHuman && <span className="animate-bounce z-10 select-none">🧑‍🎨</span>}
+            {hasPredator && <span className="text-red-500 font-bold animate-ping absolute">01</span>}
+            {hasPredator && <span className="z-10 select-none">🐯</span>}
+          </div>
+        );
+      }
+    }
+    return grid;
+  };
 
   return (
-    <div className={`min-h-screen p-4 md:p-12 transition-colors duration-1000 ${isGlitching ? 'bg-black text-stone-300 font-mono' : 'bg-stone-950 text-stone-400 font-serif'}`}>
-      <div className="max-w-xl mx-auto space-y-10">
+    <div className={`min-h-screen p-4 md:p-8 flex items-center justify-center transition-colors duration-1000 ${isGlitching ? 'bg-black text-stone-300 font-mono' : 'bg-stone-950 text-stone-400 font-serif'}`}>
+      <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         
-        {/* Header */}
-        <header className="border-b border-stone-800 pb-4 flex justify-between items-end">
-          <h1 className="text-2xl text-stone-200 tracking-wider">
-            {isGlitching ? <span className="text-emerald-500 font-mono bg-emerald-900/20 px-2">WARNING: BIO_METRICS_DECAYING</span> : "The Encampment"}
-          </h1>
-          <span className="text-sm opacity-60">Kin: {tribe.population}</span>
-        </header>
+        {/* SIDEBAR PANELS: SYSTEMS CONTROL */}
+        <div className="space-y-6">
+          <header className="border-b border-stone-800 pb-4">
+            <div className="text-xs opacity-50 font-mono">EVOLUTION LOOP: BATCH_00{progression.generation}</div>
+            <h1 className="text-xl text-stone-100 tracking-wider flex justify-between items-center">
+              {isGlitching ? <span className="text-emerald-500">MATRIX_INVERSION_WARN</span> : "Primitive Settlement"}
+              <span className="text-xs text-indigo-400 font-mono">Fragments: {progression.firmware_fragments}</span>
+            </h1>
+          </header>
 
-        {/* Environmental Readout */}
-        <section className="space-y-4">
-          <div className="flex justify-between items-center text-sm tracking-widest uppercase">
-            <span className="flex items-center text-orange-500/80">
-              <Flame className="w-4 h-4 mr-2" /> {isGlitching ? "THERMAL_CORE" : "Campfire"}
-            </span>
-            <span className={glitchTextClass}>{Math.round(tribe.campfire_heat * 100)}%</span>
-          </div>
-          <div className="w-full bg-stone-900 h-1">
-            <div className={`h-full transition-all duration-1000 ease-linear ${isGlitching ? 'bg-emerald-500' : 'bg-orange-600'}`} style={{ width: `${tribe.campfire_heat * 100}%` }}></div>
-          </div>
-
-          <div className="flex justify-between items-center text-sm tracking-widest uppercase mt-6">
-            <span className="flex items-center text-stone-500">
-              <Skull className="w-4 h-4 mr-2" /> Fear
-            </span>
-            <span className={tribe.fear_level > 0.8 ? 'text-red-500 animate-pulse' : 'text-stone-500'}>
-              {Math.round(tribe.fear_level * 100)}%
-            </span>
-          </div>
-          <div className="w-full bg-stone-900 h-1">
-            <div className="h-full bg-red-900 transition-all duration-1000 ease-linear" style={{ width: `${tribe.fear_level * 100}%` }}></div>
-          </div>
-
-          {/* THE PENALTY: Health Decay appears after Agriculture */}
-          {knowledge.agriculture_active && (
-            <>
-              <div className="flex justify-between items-center text-sm tracking-widest uppercase mt-6">
-                <span className="flex items-center text-purple-500">
-                  <Activity className="w-4 h-4 mr-2" /> Physical Decay (Arthritis/Cavities)
-                </span>
-                <span className="text-purple-500 font-mono animate-pulse">
-                  {Math.round(tribe.health_decay * 100)}%
-                </span>
+          {/* Core Metrics Progress Displays */}
+          <section className="bg-stone-900/30 border border-stone-800 p-4 space-y-3">
+            <div>
+              <div className="flex justify-between text-xs uppercase mb-1">
+                <span>Thermal Energy (Fire)</span>
+                <span>{Math.round(tribe.campfire_heat * 100)}%</span>
               </div>
-              <div className="w-full bg-stone-900 h-1">
-                <div className="h-full bg-purple-600 transition-all duration-1000 ease-linear" style={{ width: `${tribe.health_decay * 100}%` }}></div>
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* Resources Storage */}
-        <section className="grid grid-cols-4 gap-2 border border-stone-800 p-4 bg-stone-900/20">
-          <div className="text-center">
-            <span className="block text-[10px] uppercase tracking-widest opacity-50 mb-1">Rations</span>
-            <span className={`text-lg text-stone-200 ${glitchTextClass}`}>{Math.floor(resources.food)}</span>
-          </div>
-          <div className="text-center">
-            <span className="block text-[10px] uppercase tracking-widest opacity-50 mb-1">Wood</span>
-            <span className={`text-lg text-stone-200 ${glitchTextClass}`}>{resources.firewood}</span>
-          </div>
-          <div className="text-center">
-            <span className="block text-[10px] uppercase tracking-widest opacity-50 mb-1">Flint</span>
-            <span className={`text-lg text-stone-200 ${glitchTextClass}`}>{resources.flint}</span>
-          </div>
-          <div className="text-center">
-            <span className="block text-[10px] uppercase tracking-widest opacity-50 mb-1">Culture</span>
-            <span className={`text-lg text-stone-200 ${glitchTextClass}`}>{resources.culture}</span>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-2 gap-8 pt-4">
-          {/* LABOR */}
-          <section className="space-y-3">
-            <h3 className="text-xs tracking-widest uppercase opacity-50 border-b border-stone-800 pb-2">Survival (Labor)</h3>
-            <button onClick={theGreatHunt} className="w-full py-3 border border-stone-700 hover:bg-stone-800 transition-colors tracking-widest uppercase text-[10px] flex items-center justify-center">
-              <Trees className="w-3 h-3 mr-2 opacity-50" />
-              The Great Hunt (+Food, +Fear)
-            </button>
-            <button onClick={gatherWood} className="w-full py-3 border border-stone-700 hover:bg-stone-800 transition-colors tracking-widest uppercase text-[10px] flex items-center justify-center">
-              Gather Dry Wood
-            </button>
-            <button onClick={stokeFire} disabled={resources.firewood < 1} className="w-full py-3 border border-orange-900/50 text-orange-600/80 hover:bg-orange-950/30 transition-colors tracking-widest uppercase text-[10px] flex items-center justify-center disabled:opacity-30">
-              <Flame className="w-3 h-3 mr-2" />
-              Stoke Fire (-1 Wood)
-            </button>
-          </section>
-
-          {/* LEISURE */}
-          <section className="space-y-3">
-            <h3 className="text-xs tracking-widest uppercase opacity-50 border-b border-stone-800 pb-2">Leisure (Culture)</h3>
-            <button 
-              onClick={shareStories} 
-              disabled={tribe.campfire_heat < 0.5}
-              className="w-full py-3 border border-stone-700 hover:bg-stone-800 transition-colors tracking-widest uppercase text-[10px] flex items-center justify-center disabled:opacity-30"
-            >
-              <MessageCircle className="w-3 h-3 mr-2 opacity-50" />
-              Share Myths (-Fear, +Culture)
-            </button>
-            <div className="text-[10px] opacity-40 italic text-center px-4">
-              Requires a warm fire to safely converse.
+              <div className="w-full bg-stone-950 h-1"><div className="h-full bg-orange-600 transition-all duration-1000" style={{ width: `${tribe.campfire_heat * 100}%` }}></div></div>
             </div>
+            {knowledge.agriculture_active && (
+              <div>
+                <div className="flex justify-between text-xs text-purple-400 uppercase mb-1">
+                  <span>Biological Bone/Teeth Decay</span>
+                  <span>{Math.round(tribe.health_decay * 100)}%</span>
+                </div>
+                <div className="w-full bg-stone-950 h-1"><div className="h-full bg-purple-600 transition-all duration-1000" style={{ width: `${tribe.health_decay * 100}%` }}></div></div>
+              </div>
+            )}
           </section>
+
+          {/* Resources */}
+          <div className="grid grid-cols-3 gap-2 text-center text-xs border border-stone-800 p-3 bg-stone-900/10">
+            <div><span className="opacity-40 block">Food</span><span className="text-stone-200 text-sm font-bold">{Math.floor(resources.food)}</span></div>
+            <div><span className="opacity-40 block">Firewood</span><span className="text-stone-200 text-sm font-bold">{resources.firewood}</span></div>
+            <div><span className="opacity-40 block">Culture</span><span className="text-stone-200 text-sm font-bold">{resources.culture}</span></div>
+          </div>
+
+          {/* Interactive Input Triggers */}
+          <div className="space-y-2">
+            <button onClick={forage} className="w-full py-2.5 border border-stone-800 hover:bg-stone-900 text-xs uppercase tracking-wider">Forage Sector (-Energy / Move Tribes)</button>
+            <button onClick={shareStories} disabled={tribe.campfire_heat < 0.4} className="w-full py-2.5 border border-stone-800 hover:bg-stone-900 text-xs uppercase tracking-wider disabled:opacity-30">Share Origin Myths (+Culture)</button>
+            <button onClick={stokeFire} disabled={resources.firewood < 1} className="w-full py-2.5 border border-orange-950 text-orange-600/80 hover:bg-orange-950/20 text-xs uppercase tracking-wider disabled:opacity-30">Stoke Center Fire</button>
+          </div>
+
+          {/* THE PRESTIGE TRIGGER */}
+          {(tribe.health_decay >= 0.70 || tribe.population <= 1) && (
+            <div className="pt-4 border-t border-dashed border-rose-900/50">
+              <button onClick={executeCycleReset} className="w-full py-3 bg-rose-950/40 border border-rose-500 text-rose-400 font-mono text-xs uppercase tracking-widest flex items-center justify-center hover:bg-rose-500 hover:text-black transition-all animate-pulse">
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Execute System Cycle Reset (Prestige)
+              </button>
+              <p className="text-[10px] text-center opacity-50 mt-1">Liquidate current biomass clone family for permanent firmware memory.</p>
+            </div>
+          )}
         </div>
 
-        {/* THE TRAP */}
-        {!knowledge.agriculture_active && (
-          <section className="pt-8">
-            <button 
-              onClick={discoverAgriculture} 
-              disabled={resources.culture < 5 || resources.flint < 2} 
-              className="w-full py-4 border border-indigo-900 text-indigo-400 hover:bg-indigo-900/20 transition-all tracking-widest uppercase text-xs flex items-center justify-center disabled:opacity-30"
-            >
-              <Wheat className="w-4 h-4 mr-3" />
-              Sow Seeds (Cost: 5 Culture, 2 Flint)
+        {/* MAIN DISPLAY PANEL: DYNAMIC 2D GRID VISUAL MAP */}
+        <div className="space-y-4">
+          <div className="text-xs tracking-widest uppercase opacity-60 flex justify-between font-mono">
+            <span>🔴 ENVIRONMENT ECOSYSTEM MATRIX VIEW</span>
+            {isGlitching && <span className="text-emerald-500 flex items-center"><Cpu className="w-3 h-3 mr-1 animate-spin" /> RENDERING_ERROR_0x9F</span>}
+          </div>
+          
+          <div className="grid grid-cols-6 border border-stone-800 bg-stone-900/10 rounded overflow-hidden select-none">
+            {renderMap()}
+          </div>
+          
+          {!knowledge.agriculture_active ? (
+            <button onClick={discoverAgriculture} disabled={resources.culture < 5} className="w-full py-3 border border-indigo-900 text-indigo-400 text-xs uppercase font-mono tracking-widest disabled:opacity-30">
+              <Wheat className="w-4 h-4 inline mr-2" /> Unlock Crop Agriculture (Calorie Automation)
             </button>
-            <p className="text-center text-[10px] opacity-40 mt-2">End the need to hunt. Automate the food supply.</p>
-          </section>
-        )}
+          ) : (
+            <div className="text-[11px] opacity-50 bg-stone-900/40 p-3 rounded font-mono text-center border border-stone-800">
+              [SYSTEM_ALERT]: Agriculture protocol deployed. High-calorie grain density active. Skeletal structure loading density failing...
+            </div>
+          )}
+        </div>
 
       </div>
     </div>
